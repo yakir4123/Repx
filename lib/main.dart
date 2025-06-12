@@ -5,6 +5,7 @@ import 'signup_screen.dart';
 import 'login_screen.dart';
 import 'auth_options_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'main_navigation_bar.dart'; // Import the new navigation bar
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,9 +33,18 @@ class MyApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Color(0xFFEDEDED), height: 1.5),
           labelLarge: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
+        // It's good practice to define BottomNavigationBarThemeData globally if needed
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: const Color(0xFF1A1A1A), // Or your preferred nav bar background
+          selectedItemColor: const Color(0xFFFFC928), // Theme's primary accent
+          unselectedItemColor: Colors.grey[600],
+          type: BottomNavigationBarType.fixed,
+        ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      // Temporarily set MainNavigationBar as home to see it.
+      // Proper integration would involve MainScreen -> Auth -> MainNavigationBar
+      home: const MainNavigationBar(),
     );
   }
 }
