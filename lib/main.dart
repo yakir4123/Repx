@@ -4,8 +4,11 @@ import 'dart:math'; // For min function
 import 'signup_screen.dart';
 import 'login_screen.dart';
 import 'auth_options_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
