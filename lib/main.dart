@@ -121,14 +121,7 @@ class _MainScreenState extends State<MainScreen> {
                               borderRadius: BorderRadius.circular(30),
                             ),
                             minimumSize: const Size(double.infinity, 50), // Ensures min height of 50
-                            overlayColor: MaterialStateProperty.resolveWith<Color?>(
-                              (Set<MaterialState> states) {
-                                if (states.contains(MaterialState.pressed)) {
-                                  return Colors.black.withOpacity(0.1);
-                                }
-                                return null;
-                              },
-                            ),
+                            overlayColor: Colors.black.withOpacity(0.1),
                           ).copyWith(
                              elevation: MaterialStateProperty.all(8.0),
                           ),
@@ -155,14 +148,7 @@ class _MainScreenState extends State<MainScreen> {
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Add padding
                           minimumSize: const Size(0, 44), // Ensure minimum height of 44
-                          overlayColor: MaterialStateProperty.resolveWith<Color?>(
-                            (Set<MaterialState> states) {
-                              if (states.contains(MaterialState.pressed)) {
-                                return Colors.white.withOpacity(0.1);
-                              }
-                              return null;
-                            },
-                          ),
+                          overlayColor: Colors.white.withOpacity(0.1),
                         ),
                         onPressed: () {
                           Navigator.push(
