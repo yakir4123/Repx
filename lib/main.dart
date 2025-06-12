@@ -5,6 +5,7 @@ import 'signup_screen.dart';
 import 'login_screen.dart';
 import 'auth_options_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:repx/skill_path_overview_page.dart'; // Import the new page
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +35,8 @@ class MyApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      // home: const MainScreen(), // Original home
+      home: const SkillPathOverviewPage(), // Set new page as home for development
     );
   }
 }
