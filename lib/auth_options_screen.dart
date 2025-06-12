@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'dart:io' show Platform; // For platform-specific checks if needed, though not strictly for Apple Sign In button visibility here.
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'dart:io' show Platform;
 import 'dart:convert'; // For base64UrlEncode
 import 'dart:math'; // For Random
 import 'package:crypto/crypto.dart'; // For sha256
+import 'dashboard_screen.dart';
 
 class AuthOptionsScreen extends StatelessWidget {
   const AuthOptionsScreen({super.key});
 
   Future<void> _showErrorDialog(BuildContext context, String title, String message) async {
-    return showDialog<void>(
+    // Ensure the context is still valid before showing a dialog
+    if (!context.mounted) return;
+    showDialog<void>(
       context: context,
       barrierDismissible: false, // User must tap button!
       builder: (BuildContext dialogContext) {
@@ -43,7 +47,6 @@ class AuthOptionsScreen extends StatelessWidget {
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
-        // The user canceled the sign-in
         print('Google sign-in canceled by user.');
         return;
       }
@@ -58,28 +61,22 @@ class AuthOptionsScreen extends StatelessWidget {
       final User? user = userCredential.user;
 
       if (user != null) {
-        print('Successfully signed in with Google:');
-        print('User ID: ${user.uid}');
-        print('Display Name: ${user.displayName}');
-        print('Email: ${user.email}');
-        // TODO: Navigate to the next screen
+        print('Successfully signed in with Google: User ID: ${user.uid}, Name: ${user.displayName}, Email: ${user.email}');
+        if (context.mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
+        }
       }
     } catch (e) {
       print('Error during Google sign-in: $e');
-      // It's good practice to check if the widget is still mounted before showing a dialog
-      if (context.mounted) {
-        _showErrorDialog(context, 'Google Sign-In Error', e.toString());
-      }
+      _showErrorDialog(context, 'Google Sign-In Error', e.toString());
     }
   }
 
-  // Helper function to generate a random nonce for Apple Sign In
   String _generateNonce([int length = 32]) {
     final random = Random.secure();
     final values = List<int>.generate(length, (i) => random.nextInt(256));
     return base64Url.encode(values).substring(0, length);
   }
-
 
   Future<void> signInWithApple(BuildContext context) async {
     try {
@@ -87,39 +84,63 @@ class AuthOptionsScreen extends StatelessWidget {
       final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
 
       final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: hashedNonce, // For web, use the hashed nonce
+        scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+        nonce: hashedNonce,
       );
 
       final oAuthProvider = OAuthProvider("apple.com");
       final credential = oAuthProvider.credential(
-        idToken: appleCredential.identityToken, // This is the JWT token
-        rawNonce: rawNonce, // The original raw nonce
-        // accessToken is not directly available/needed here for Firebase with idToken
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
       );
 
       final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
       final User? user = userCredential.user;
 
       if (user != null) {
-        print('Successfully signed in with Apple:');
-        print('User ID: ${user.uid}');
-        print('Display Name: ${user.displayName ?? "N/A (Apple Sign In)"}');
-        print('Email: ${user.email ?? "N/A (Apple Sign In)"}');
-        // Note: Apple may not always provide email/name if user chooses to hide it or if it's not the first sign-in.
-        // TODO: Navigate to the next screen
+        print('Successfully signed in with Apple: User ID: ${user.uid}, Name: ${user.displayName}, Email: ${user.email}');
+        if (context.mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
+        }
       }
     } catch (e) {
       print('Error during Apple sign-in: $e');
-      if (context.mounted) {
-        _showErrorDialog(context, 'Apple Sign-In Error', e.toString());
-      }
+      _showErrorDialog(context, 'Apple Sign-In Error', e.toString());
     }
   }
 
+  Future<void> signInWithFacebook(BuildContext context) async {
+    try {
+      final LoginResult result = await FacebookAuth.instance.login();
+
+      if (result.status == LoginStatus.success) {
+        final AccessToken accessToken = result.accessToken!;
+        final AuthCredential credential = FacebookAuthProvider.credential(accessToken.token);
+
+        final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        final User? user = userCredential.user;
+
+        if (user != null) {
+          print('Successfully signed in with Facebook: User ID: ${user.uid}, Name: ${user.displayName}, Email: ${user.email}');
+          if (context.mounted) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
+          }
+        }
+      } else if (result.status == LoginStatus.cancelled) {
+        print('Facebook sign-in canceled by user.');
+      } else {
+        print('Facebook sign-in failed: ${result.message}');
+        _showErrorDialog(context, 'Facebook Sign-In Error', result.message ?? 'An unknown error occurred.');
+      }
+    } on FirebaseAuthException catch (e) {
+      print('Firebase Auth Error during Facebook sign-in: $e');
+      _showErrorDialog(context, 'Facebook Sign-In Error', e.message ?? e.toString());
+    }
+    catch (e) {
+      print('Error during Facebook sign-in: $e');
+      _showErrorDialog(context, 'Facebook Sign-In Error', e.toString());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,39 +165,42 @@ class AuthOptionsScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    'assets/icons/google_logo.png',
-                    height: 24.0,
-                    width: 24.0,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.error);
-                    },
-                  ),
+                  Image.asset('assets/icons/google_logo.png', height: 24.0, width: 24.0,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error)),
                   const SizedBox(width: 10),
                   const Text('Sign in with Google'),
                 ],
               ),
             ),
             const SizedBox(height: 16.0),
+            if (Platform.isIOS) ...[
+              ElevatedButton(
+                onPressed: () => signInWithApple(context),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/icons/apple_logo.png', height: 24.0, width: 24.0,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.error)),
+                    const SizedBox(width: 10),
+                    const Text('Sign in with Apple'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16.0), // Space after Apple button if it's shown
+            ],
             ElevatedButton(
-              onPressed: () => signInWithApple(context),
+              onPressed: () => signInWithFacebook(context),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    'assets/icons/apple_logo.png',
-                    height: 24.0,
-                    width: 24.0,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.error);
-                    },
-                  ),
+                  Image.asset('assets/icons/facebook_logo.png', height: 24.0, width: 24.0,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error)),
                   const SizedBox(width: 10),
-                  const Text('Sign in with Apple'),
+                  const Text('Sign in with Facebook'),
                 ],
               ),
             ),
-            const SizedBox(height: 24.0),
+            const SizedBox(height: 24.0), // Space before the "or" divider
             const Row(
               children: <Widget>[
                 Expanded(child: Divider()),
@@ -190,7 +214,7 @@ class AuthOptionsScreen extends StatelessWidget {
             const SizedBox(height: 24.0),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to Log In screen (or Email sign-in/sign-up)
+                // TODO: Navigate to Log In screen
               },
               child: const Text('Already have an account? Log In'),
             ),
